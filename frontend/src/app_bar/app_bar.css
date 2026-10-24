@@ -1,0 +1,866 @@
+/* =========================================================
+   AI Reviewer — Application Bar
+   ========================================================= */
+
+.app-shell {
+  min-height: 100vh;
+  background: #f8f9fb;
+}
+
+.app-bar {
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  width: 100%;
+  height: 64px;
+  background: rgba(255, 255, 255, 0.96);
+  border-bottom: 1px solid #e7e9ee;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+.app-bar-inner {
+  width: min(100%, 1440px);
+  height: 100%;
+  margin: 0 auto;
+  padding: 0 18px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* Home */
+
+.app-bar-home {
+  width: 40px;
+  height: 40px;
+  flex: 0 0 40px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 10px;
+  color: #475467;
+  background: transparent;
+  text-decoration: none;
+  transition:
+    background 0.16s ease,
+    color 0.16s ease;
+}
+
+.app-bar-home:hover,
+.app-bar-home.active {
+  color: #111827;
+  background: #f2f4f7;
+}
+
+.app-bar-home-icon {
+  width: 21px;
+  height: 21px;
+}
+
+/* Brand */
+
+.app-bar-brand {
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  color: #101828;
+  text-decoration: none;
+}
+
+.app-bar-brand-mark {
+  width: 31px;
+  height: 31px;
+  flex: 0 0 31px;
+  display: grid;
+  place-items: center;
+  border-radius: 9px;
+  color: #fff;
+  background: #111827;
+  font:
+    800 9px/1 Inter, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    sans-serif;
+  letter-spacing: 0.2px;
+}
+
+.app-bar-brand-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font:
+    700 15px/1 Inter, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    sans-serif;
+  letter-spacing: -0.15px;
+}
+
+.app-bar-spacer {
+  flex: 1 1 auto;
+}
+
+/* Account */
+
+.app-bar-account {
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.app-bar-avatar-button {
+  height: 40px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 7px 3px 3px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  color: #344054;
+  background: transparent;
+  cursor: pointer;
+  transition:
+    background 0.16s ease,
+    border-color 0.16s ease;
+}
+
+.app-bar-avatar-button:hover,
+.app-bar-avatar-button.open {
+  background: #f2f4f7;
+  border-color: #eaecf0;
+}
+
+.app-bar-avatar {
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  color: #475467;
+  background: #f2f4f7;
+}
+
+.app-bar-avatar svg {
+  width: 19px;
+  height: 19px;
+}
+
+.app-bar-chevron {
+  width: 15px;
+  height: 15px;
+  color: #667085;
+  transition: transform 0.16s ease;
+}
+
+.app-bar-avatar-button.open .app-bar-chevron {
+  transform: rotate(180deg);
+}
+
+/* Account dropdown */
+
+.app-bar-account-menu {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  width: 238px;
+  padding: 8px;
+  border: 1px solid #e4e7ec;
+  border-radius: 14px;
+  background: #fff;
+  box-shadow:
+    0 18px 45px rgba(16, 24, 40, 0.12),
+    0 3px 10px rgba(16, 24, 40, 0.05);
+  animation: appBarMenuIn 0.14s ease-out;
+}
+
+@keyframes appBarMenuIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.app-bar-menu-heading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 8px 10px;
+}
+
+.app-bar-menu-avatar {
+  width: 36px;
+  height: 36px;
+  flex: 0 0 36px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  color: #475467;
+  background: #f2f4f7;
+}
+
+.app-bar-menu-avatar svg {
+  width: 20px;
+  height: 20px;
+}
+
+.app-bar-menu-heading div {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.app-bar-menu-heading strong {
+  overflow: hidden;
+  color: #101828;
+  font:
+    700 13px/1.3 Inter, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    sans-serif;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.app-bar-menu-heading span {
+  color: #98a2b3;
+  font:
+    500 11px/1.3 Inter, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    sans-serif;
+}
+
+.app-bar-menu-divider {
+  height: 1px;
+  margin: 4px 2px;
+  background: #eaecf0;
+}
+
+.app-bar-menu-item {
+  width: 100%;
+  min-height: 42px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 9px;
+  border: 0;
+  border-radius: 9px;
+  color: #344054;
+  background: transparent;
+  font:
+    600 13px/1 Inter, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    sans-serif;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background 0.14s ease,
+    color 0.14s ease;
+}
+
+.app-bar-menu-item:hover,
+.app-bar-menu-item.active {
+  color: #101828;
+  background: #f2f4f7;
+}
+
+.app-bar-menu-item.logout {
+  color: #667085;
+}
+
+.app-bar-menu-item.logout:hover {
+  color: #344054;
+  background: #f2f4f7;
+}
+
+.app-bar-menu-icon {
+  width: 19px;
+  height: 19px;
+  flex: 0 0 19px;
+  display: grid;
+  place-items: center;
+}
+
+.app-bar-menu-icon svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* Content */
+
+.app-shell-content {
+  width: 100%;
+  min-height: calc(100vh - 64px);
+}
+
+/* Mobile */
+
+@media (max-width: 520px) {
+  .app-bar {
+    height: 58px;
+  }
+
+  .app-bar-inner {
+    padding: 0 10px;
+    gap: 7px;
+  }
+
+  .app-bar-home {
+    width: 38px;
+    height: 38px;
+    flex-basis: 38px;
+  }
+
+  .app-bar-brand {
+    gap: 7px;
+  }
+
+  .app-bar-brand-mark {
+    width: 29px;
+    height: 29px;
+    flex-basis: 29px;
+    border-radius: 8px;
+  }
+
+  .app-bar-brand-name {
+    font-size: 14px;
+  }
+
+  .app-bar-coins {
+    height: 36px;
+    padding-right: 8px;
+  }
+
+  .app-bar-coins-label {
+    display: none;
+  }
+
+  .app-bar-coins-value {
+    font-size: 11px;
+  }
+
+  .app-bar-notification-button {
+    width: 36px;
+    height: 36px;
+  }
+
+  .app-bar-notification-menu {
+    right: -5px;
+    width: min(300px, calc(100vw - 20px));
+  }
+
+  .app-bar-avatar-button {
+    height: 38px;
+    padding-right: 5px;
+  }
+
+  .app-bar-avatar {
+    width: 30px;
+    height: 30px;
+  }
+
+  .app-bar-account-menu {
+    right: 0;
+    width: min(238px, calc(100vw - 20px));
+  }
+
+  .app-shell-content {
+    min-height: calc(100vh - 58px);
+  }
+}
+
+/* =========================================================
+   Coins Balance
+   ========================================================= */
+
+.app-bar-coins {
+  height: 38px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 10px 0 7px;
+  border: 1px solid #e4e7ec;
+  border-radius: 999px;
+  color: #344054;
+  background: #fff;
+  cursor: pointer;
+  font: inherit;
+}
+
+.app-bar-coin-icon {
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  color: #B7791F;       /* Golden coin icon */
+  background: #FFF8E7;  /* Soft gold background */
+  border-radius: 50%;
+}
+
+.app-bar-coin-icon svg {
+  width: 17px;
+  height: 17px;
+}
+
+.app-bar-coins-value {
+  font: 750 12px/1 Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  color: #101828;
+}
+
+.app-bar-coins-label {
+  font: 600 10px/1 Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  color: #98a2b3;
+}
+
+/* =========================================================
+   Notifications
+   ========================================================= */
+
+.app-bar-notifications {
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.app-bar-notification-button {
+  position: relative;
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  color: #475467;
+  background: transparent;
+  cursor: pointer;
+  transition: background .16s ease, border-color .16s ease, color .16s ease;
+}
+
+.app-bar-notification-button:hover,
+.app-bar-notification-button.open {
+  color: #111827;
+  background: #f2f4f7;
+  border-color: #eaecf0;
+}
+
+.app-bar-notification-icon {
+  width: 20px;
+  height: 20px;
+}
+
+.app-bar-notification-dot {
+  position: absolute;
+  top: 7px;
+  right: 7px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #d0d5dd;
+}
+
+.app-bar-notification-menu {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  width: 300px;
+  overflow: hidden;
+  border: 1px solid #e4e7ec;
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 18px 45px rgba(16,24,40,.12), 0 3px 10px rgba(16,24,40,.05);
+  animation: appBarMenuIn .14s ease-out;
+}
+
+.app-bar-notification-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 15px;
+  border-bottom: 1px solid #eaecf0;
+}
+
+.app-bar-notification-header strong {
+  font: 700 13px/1.3 Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  color: #101828;
+}
+
+.app-bar-notification-header span {
+  font: 500 10px/1.3 Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  color: #98a2b3;
+}
+
+.app-bar-notification-empty {
+  min-height: 150px;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 5px;
+  padding: 20px;
+  text-align: center;
+}
+
+.app-bar-notification-empty-icon {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  margin-bottom: 4px;
+  border-radius: 50%;
+  color: #667085;
+  background: #f2f4f7;
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.app-bar-notification-empty strong {
+  font: 650 12px/1.3 Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  color: #344054;
+}
+
+.app-bar-notification-empty > span:last-child {
+  font: 500 10px/1.4 Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  color: #98a2b3;
+}
+
+
+/* =========================================================
+   Coin management dropdown
+   Compact styling aligned with account and notification menus
+   ========================================================= */
+
+.app-bar-coin-management {
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.app-bar-coins:hover,
+.app-bar-coins.open {
+  background: #fafafa;
+  border-color: #d9dde5;
+}
+
+.app-bar-coin-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 1100;
+  width: min(300px, calc(100vw - 20px));
+  max-height: min(460px, calc(100vh - 82px));
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border: 1px solid #e4e7ec;
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 18px 45px rgba(16, 24, 40, 0.12), 0 3px 10px rgba(16, 24, 40, 0.05);
+  animation: appBarMenuIn 0.14s ease-out;
+  scrollbar-width: thin;
+  scrollbar-color: #d0d5dd transparent;
+}
+
+.app-bar-coin-menu::-webkit-scrollbar { width: 6px; }
+.app-bar-coin-menu::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: #d0d5dd;
+}
+
+.app-bar-coin-menu-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 13px;
+  border-bottom: 1px solid #eaecf0;
+}
+
+.app-bar-coin-menu-header > div {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.app-bar-coin-menu-header > div > span,
+.app-bar-coin-plan-label {
+  color: #98a2b3;
+  font: 700 9px/1.2 Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  letter-spacing: 0.06em;
+}
+
+.app-bar-coin-menu-header strong {
+  color: #101828;
+  font: 750 16px/1.2 Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  letter-spacing: -0.2px;
+}
+
+.app-bar-coin-menu-balance {
+  flex: 0 0 auto;
+  color: #667085;
+  font: 500 11px/1.3 Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+.app-bar-coin-section {
+  padding: 10px 13px;
+  border-bottom: 1px solid #f0f1f3;
+}
+
+.app-bar-coin-section-title {
+  margin-bottom: 6px;
+  color: #667085;
+  font: 700 10px/1.3 Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 0.045em;
+}
+
+.app-bar-coin-rule,
+.app-bar-coin-history-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 5px 0;
+  color: #344054;
+  font: 500 11px/1.4 Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+.app-bar-coin-rule strong,
+.app-bar-coin-history-row strong {
+  flex: 0 0 auto;
+  color: #101828;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.app-bar-coin-plans {
+  display: grid;
+  gap: 8px;
+}
+
+.app-bar-coin-subscription {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 0;
+  padding: 10px;
+  border: 1px solid #e7e9ee;
+  border-radius: 10px;
+  background: #fff;
+}
+
+.app-bar-coin-subscription.active {
+  border-color: #c7d7fe;
+  background: #f5f8ff;
+}
+
+.app-bar-coin-subscription-copy {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.app-bar-coin-subscription-copy strong {
+  display: block;
+  margin-top: 3px;
+  color: #101828;
+  font: 750 13px/1.25 Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+.app-bar-coin-subscription-copy p {
+  margin: 3px 0;
+  color: #667085;
+  font: 400 10px/1.4 Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+.app-bar-coin-subscription-copy small {
+  display: block;
+  color: #98a2b3;
+  font: 500 9px/1.35 Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  overflow-wrap: anywhere;
+}
+
+.app-bar-coin-subscribe-button {
+  flex: 0 0 auto;
+  min-height: 30px;
+  max-width: 104px;
+  padding: 0 9px;
+  border: 0;
+  border-radius: 8px;
+  color: #fff;
+  background: #111827;
+  cursor: pointer;
+  font: 650 10px/1.2 Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  transition: background 0.14s ease, opacity 0.14s ease;
+}
+
+.app-bar-coin-subscribe-button:hover:not(:disabled) { background: #1f2937; }
+.app-bar-coin-subscribe-button:focus-visible {
+  outline: 2px solid #84adff;
+  outline-offset: 2px;
+}
+.app-bar-coin-subscribe-button:disabled { opacity: 0.55; cursor: not-allowed; }
+
+.app-bar-coin-history-section { border-bottom: 0; }
+.app-bar-coin-history-row span {
+  min-width: 0;
+  color: #667085;
+  overflow-wrap: anywhere;
+}
+
+.app-bar-coin-empty,
+.app-bar-coin-loading {
+  padding: 8px 0 2px;
+  color: #98a2b3;
+  font: 500 11px/1.4 Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+.app-bar-coin-message {
+  margin: 9px 12px 0;
+  padding: 8px 9px;
+  border-radius: 8px;
+  font: 600 10px/1.4 Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  overflow-wrap: anywhere;
+}
+
+.app-bar-coin-message.error { color: #b42318; background: #fef3f2; }
+.app-bar-coin-message.success { color: #027a48; background: #ecfdf3; }
+
+@media (max-width: 640px) {
+  .app-bar-coin-menu {
+    position: fixed;
+    top: 64px;
+    right: 10px;
+    width: min(300px, calc(100vw - 20px));
+    max-height: calc(100dvh - 76px);
+  }
+
+  .app-bar-coin-subscription {
+    align-items: center;
+    flex-direction: row;
+  }
+
+  .app-bar-coin-subscribe-button {
+    width: auto;
+  }
+}
+
+@media (max-width: 360px) {
+  .app-bar-coin-menu {
+    right: 8px;
+    width: calc(100vw - 16px);
+  }
+
+  .app-bar-coin-subscription { gap: 7px; padding: 8px; }
+  .app-bar-coin-subscribe-button { max-width: 88px; padding: 0 7px; }
+}
+
+/* =========================================================
+   Premium mobile-first visual refresh — workflow unchanged
+   ========================================================= */
+:root {
+  --air-primary: #5145f5;
+  --air-primary-dark: #4035d9;
+  --air-primary-soft: #f0efff;
+  --air-ink: #172033;
+  --air-muted: #667085;
+  --air-border: #e7e9f4;
+  --air-surface: #ffffff;
+}
+
+.app-shell {
+  color: var(--air-ink);
+  background: #f7f8fc;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+.app-bar {
+  height: 66px;
+  background: rgba(255, 255, 255, .92);
+  border-bottom-color: #e9eaf4;
+  box-shadow: 0 4px 20px rgba(27, 31, 74, .035);
+}
+
+.app-bar-inner {
+  max-width: 1480px;
+  padding-inline: clamp(12px, 2.4vw, 30px);
+  gap: clamp(8px, 1.1vw, 15px);
+}
+
+.app-bar-home,
+.app-bar-notification-button {
+  border-radius: 12px;
+  transition: background .18s ease, color .18s ease, transform .18s ease;
+}
+
+.app-bar-home:hover,
+.app-bar-home.active,
+.app-bar-notification-button:hover,
+.app-bar-notification-button.open {
+  color: var(--air-primary);
+  background: var(--air-primary-soft);
+}
+
+.app-bar-brand { gap: 10px; }
+.app-bar-brand-mark {
+  width: 34px;
+  height: 34px;
+  flex-basis: 34px;
+  border-radius: 11px;
+  background: linear-gradient(145deg, #6d63ff 0%, #493df0 100%);
+  box-shadow: 0 5px 12px rgba(81, 69, 245, .22);
+  font-size: 10px;
+}
+.app-bar-brand-name { font-size: 15px; letter-spacing: -.35px; }
+
+.app-bar-coins {
+  min-height: 40px;
+  border-color: #ece9ff;
+  background: #faf9ff;
+  border-radius: 12px;
+  transition: border-color .18s ease, background .18s ease, box-shadow .18s ease;
+}
+.app-bar-coins:hover,
+.app-bar-coins.open {
+  border-color: #c9c4ff;
+  background: #f3f1ff;
+  box-shadow: 0 0 0 3px rgba(81, 69, 245, .06);
+}
+.app-bar-coin-icon { color: #B7791F;       /* Golden coin icon */
+  background: #FFF8E7;  /* Soft gold background */ }
+.app-bar-coins-value { color: #28225e; }
+
+.app-bar-account-menu,
+.app-bar-notification-menu,
+.app-bar-coin-menu {
+  border-color: #e8e8f3;
+  border-radius: 17px;
+  box-shadow: 0 22px 60px rgba(32, 28, 84, .15), 0 3px 10px rgba(32, 28, 84, .045);
+}
+.app-bar-menu-item { min-height: 44px; border-radius: 11px; }
+.app-bar-menu-item:hover,
+.app-bar-menu-item.active {
+  color: var(--air-primary);
+  background: var(--air-primary-soft);
+}
+.app-bar-menu-item.logout:hover { color: #d92d20; background: #fff1f0; }
+.app-bar-avatar-button:hover,
+.app-bar-avatar-button.open { background: #f4f2ff; border-color: #e8e4ff; }
+.app-bar-avatar { color: #5549e9; background: #efedff; }
+.app-bar-coin-subscribe-button { background: var(--air-primary); border-color: var(--air-primary); }
+.app-bar-coin-subscribe-button:hover:not(:disabled) { background: var(--air-primary-dark); border-color: var(--air-primary-dark); }
+
+@media (max-width: 640px) {
+  .app-bar { height: 60px; }
+  .app-bar-inner { padding-inline: 10px; gap: 6px; }
+  .app-bar-brand { gap: 7px; }
+  .app-bar-brand-mark { width: 30px; height: 30px; flex-basis: 30px; border-radius: 9px; }
+  .app-bar-brand-name { font-size: 13px; letter-spacing: -.25px; }
+  .app-bar-coins { min-height: 36px; border-radius: 11px; }
+  .app-bar-notification-button { width: 36px; height: 36px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-shell *, .app-shell *::before, .app-shell *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

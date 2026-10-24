@@ -1,0 +1,89 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-labelledby="title desc">
+  <title id="title">AI Brand Pro growth logo</title>
+  <desc id="desc">A glossy abstract A-shaped ribbon with a rising arrow, growth bars, and a four-point AI sparkle, rendered as scalable vector artwork with no text.</desc>
+  <defs>
+    <linearGradient id="arc" x1="150" y1="170" x2="770" y2="720" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#27E5F4"/><stop offset=".28" stop-color="#087BFF"/><stop offset=".58" stop-color="#243AF4"/><stop offset=".82" stop-color="#8A28F7"/><stop offset="1" stop-color="#F05AEF"/>
+    </linearGradient>
+    <linearGradient id="aFront" x1="255" y1="330" x2="730" y2="900" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#28E4F4"/><stop offset=".3" stop-color="#078AFF"/><stop offset=".63" stop-color="#1448F6"/><stop offset="1" stop-color="#7B19F2"/>
+    </linearGradient>
+    <linearGradient id="aSide" x1="570" y1="330" x2="820" y2="880" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#28DFF5"/><stop offset=".35" stop-color="#087BFA"/><stop offset=".68" stop-color="#3D18E7"/><stop offset="1" stop-color="#A222F3"/>
+    </linearGradient>
+    <linearGradient id="arrow" x1="200" y1="760" x2="930" y2="390" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#1ADCF5"/><stop offset=".27" stop-color="#078CFF"/><stop offset=".55" stop-color="#4A4CFF"/><stop offset=".78" stop-color="#D82DF5"/><stop offset="1" stop-color="#FA63F4"/>
+    </linearGradient>
+    <linearGradient id="arrowSide" x1="470" y1="750" x2="910" y2="420" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#078BFF"/><stop offset=".5" stop-color="#6525F4"/><stop offset="1" stop-color="#A000E9"/>
+    </linearGradient>
+    <linearGradient id="barBlue" x1="570" y1="690" x2="625" y2="870" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#27DDF4"/><stop offset=".55" stop-color="#087DFF"/><stop offset="1" stop-color="#4B18F2"/>
+    </linearGradient>
+    <linearGradient id="barPurple" x1="410" y1="780" x2="470" y2="900" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#C25BFF"/><stop offset="1" stop-color="#5412F2"/>
+    </linearGradient>
+    <linearGradient id="spark" x1="820" y1="105" x2="905" y2="210" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#16DDF6"/><stop offset=".48" stop-color="#3268FF"/><stop offset="1" stop-color="#B11CF4"/>
+    </linearGradient>
+    <linearGradient id="shine" x1="230" y1="250" x2="790" y2="720" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFFFFF" stop-opacity=".86"/><stop offset=".45" stop-color="#FFFFFF" stop-opacity=".25"/><stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="shineArrow" x1="210" y1="770" x2="920" y2="360" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFFFFF" stop-opacity=".7"/><stop offset=".5" stop-color="#FFFFFF" stop-opacity=".22"/><stop offset="1" stop-color="#FFFFFF" stop-opacity=".75"/>
+    </linearGradient>
+    <filter id="softShadow" x="-20%" y="-20%" width="140%" height="150%">
+      <feGaussianBlur stdDeviation="9"/>
+    </filter>
+  </defs>
+
+  <!-- The sweeping orbital curve communicates momentum and continuous growth. -->
+  <path d="M264 734C171 678 126 580 137 469C151 326 262 213 414 177C553 144 677 180 766 265"
+        fill="none" stroke="#6E31F8" stroke-opacity=".18" stroke-width="74" stroke-linecap="round"/>
+  <path d="M262 727C169 670 128 578 140 470C154 333 261 223 413 185C549 151 672 184 760 269"
+        fill="none" stroke="url(#arc)" stroke-width="66" stroke-linecap="round"/>
+  <path d="M207 654C165 577 166 482 201 398C248 287 348 219 465 198C568 179 663 204 733 253"
+        fill="none" stroke="url(#shine)" stroke-width="4" stroke-linecap="round"/>
+
+  <!-- Abstract A-shaped ribbon: front fold. -->
+  <path d="M172 874L404 389C428 339 455 314 489 313C521 311 546 334 566 376L685 631L599 701L492 478L346 798L283 874C255 893 212 897 183 886C171 882 167 878 172 874Z"
+        fill="url(#aFront)"/>
+  <path d="M404 389C428 339 455 314 489 313C521 311 546 334 566 376L589 424C558 394 536 383 511 386C482 389 464 411 445 451L344 656L404 389Z"
+        fill="#27DDF3" fill-opacity=".36"/>
+  <path d="M426 374C446 340 466 326 489 326C514 326 533 346 550 380L663 623"
+        fill="none" stroke="#B5FBFF" stroke-opacity=".72" stroke-width="5" stroke-linecap="round"/>
+  <path d="M174 874C208 888 252 881 282 854L348 797L492 478C510 440 529 420 551 414"
+        fill="none" stroke="#3AFAFF" stroke-opacity=".42" stroke-width="4" stroke-linecap="round"/>
+
+  <!-- Rear ribbon leg creates the dimensional folded A silhouette. -->
+  <path d="M548 344C570 339 595 354 610 384L829 812C846 847 858 875 839 890C823 903 782 898 755 881C729 865 713 838 697 805L574 550C557 515 540 488 520 484C501 480 486 499 469 529L333 782L283 874L173 874L404 389C428 339 455 314 489 313C512 312 531 324 548 344Z"
+        fill="url(#aSide)" opacity=".98"/>
+  <path d="M564 366C583 376 599 403 613 432L815 819C830 849 840 870 832 881"
+        fill="none" stroke="#7EF4FF" stroke-opacity=".48" stroke-width="5" stroke-linecap="round"/>
+  <path d="M584 551C622 628 662 713 704 795C725 838 750 869 785 886"
+        fill="none" stroke="#C14BFF" stroke-opacity=".6" stroke-width="5" stroke-linecap="round"/>
+
+  <!-- Ascending analytics bars. -->
+  <path d="M402 845Q402 832 414 825L445 808Q459 800 459 817V891Q459 902 448 902H414Q402 902 402 890Z"
+        fill="url(#barPurple)"/>
+  <path d="M482 796Q482 783 494 776L525 759Q540 751 540 768V891Q540 902 529 902H494Q482 902 482 890Z"
+        fill="url(#barPurple)"/>
+  <path d="M563 729Q563 716 576 709L609 691Q624 684 624 701V890Q624 902 612 902H575Q563 902 563 890Z"
+        fill="url(#barBlue)"/>
+  <path d="M411 844Q411 837 419 832L444 818M491 795Q491 788 499 783L524 769M572 728Q572 721 580 717L608 702"
+        fill="none" stroke="#FFFFFF" stroke-opacity=".62" stroke-width="3.5" stroke-linecap="round"/>
+
+  <!-- Rising arrow wraps across the A to make growth the dominant gesture. -->
+  <path d="M168 868C222 849 257 807 297 762C354 697 405 674 490 659C592 641 695 625 767 560C804 527 824 493 835 452L786 448L900 344L949 490L909 472C886 552 846 609 786 652C704 711 598 727 500 747C409 766 377 802 325 853C291 887 239 905 191 898C170 895 158 881 168 868Z"
+        fill="url(#arrow)"/>
+  <path d="M168 868C222 849 257 807 297 762C354 697 405 674 490 659C592 641 695 625 767 560C804 527 824 493 835 452L786 448L900 344L949 490L909 472"
+        fill="none" stroke="url(#shineArrow)" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M181 876C237 881 278 840 320 793C374 734 413 708 499 692C611 671 718 650 785 586C818 555 840 516 850 479"
+        fill="none" stroke="#FFFFFF" stroke-opacity=".28" stroke-width="3" stroke-linecap="round"/>
+
+  <!-- AI sparkle / intelligence cue. -->
+  <path d="M847 190C884 183 912 160 923 118C934 160 957 183 998 190C957 201 934 224 923 265C912 224 884 201 847 190Z"
+        fill="url(#spark)"/>
+  <path d="M923 119V264M848 190H998" stroke="#FFFFFF" stroke-opacity=".38" stroke-width="2"/>
+  <circle cx="923" cy="190" r="4" fill="#FFFFFF"/>
+</svg>
