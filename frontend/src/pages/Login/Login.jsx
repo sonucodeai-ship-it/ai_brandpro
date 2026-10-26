@@ -336,7 +336,7 @@ export default function Login() {
             <div className="auth-mobile-brand">
               <div className="auth-brand">
                 <span className="auth-brand-mark">A</span>
-                <span>AI BrandPro</span>
+                <span>AI BrandPlus</span>
               </div>
             </div>
 
@@ -349,7 +349,7 @@ export default function Login() {
                     alt="AI Brand Pro logo"
                   />
 
-                  <strong>AI BrandPro</strong>
+                  <strong>AI BrandPlus</strong>
 
                   <span className="welcome-brand-caption">
                     AI Growth for Local Businesses

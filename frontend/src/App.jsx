@@ -24,6 +24,8 @@ import WebsiteEdit from "./your_website_frontend/WebsiteEdit";
 import AppBar from "./app_bar/app_bar";
 import YourQRs from "./qr/YourQRs";
 import PublicQRLanding from "./qr/PublicQRLanding";
+import PrivacyPolicy from "./pages/Legal/PrivacyPolicy";
+import TermsOfService from "./pages/Legal/TermsOfService";
 
 import AdminLogin from "./pages/Admin/AdminLogin";
 import AdminDashboard from "./pages/Admin/AdminDashboard";
@@ -251,6 +253,9 @@ function AppRoutes() {
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
+      {/* Public legal pages required for OAuth consent and user transparency. */}
+      <Route path="/privacy" element={<PrivacyPolicy />} />
+      <Route path="/terms" element={<TermsOfService />} />
 
       {/* Admin pages */}
       <Route path="/admin/login" element={<AdminLogin />} />

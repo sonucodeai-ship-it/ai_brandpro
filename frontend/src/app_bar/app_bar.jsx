@@ -290,7 +290,7 @@ function AppBar() {
               AI
             </span>
 
-            <span className="app-bar-brand-name">BrandPro</span>
+            <span className="app-bar-brand-name">BrandPlus</span>
           </Link>
 
           <div className="app-bar-spacer" />
