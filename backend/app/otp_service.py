@@ -90,7 +90,7 @@ def send_signup_otp(
     # EMAIL CONTENT
     # =====================================================
 
-    subject = "AI Reviewer - Verify Your Email"
+    subject = "AI BrandPlus - Verify Your Email"
 
     # -----------------------------------------------------
     # Plain-text fallback
@@ -102,7 +102,7 @@ def send_signup_otp(
     text_content = f"""
 Hello {business_name},
 
-Welcome to AI Reviewer.
+Welcome to AI BrandPlus.
 
 To complete your account registration, please use the
 verification code below:
@@ -115,7 +115,7 @@ If you did not request this verification, you can safely
 ignore this email. No action is required.
 
 Regards,
-AI Reviewer
+AI BrandPlus
 """
 
     # -----------------------------------------------------
@@ -134,7 +134,7 @@ AI Reviewer
         content="width=device-width, initial-scale=1.0"
     >
 
-    <title>AI Reviewer - Email Verification</title>
+    <title>AI BrandPlus - Email Verification</title>
 </head>
 
 <body
@@ -203,7 +203,7 @@ AI Reviewer
                                     letter-spacing:0.3px;
                                 "
                             >
-                                AI Reviewer
+                                AI BrandPlus
                             </div>
 
                             <div
@@ -254,7 +254,7 @@ AI Reviewer
                                     color:#4b5563;
                                 "
                             >
-                                Welcome to AI Reviewer.
+                                Welcome to AI BrandPlus.
                                 We received a request to create
                                 your account. Please verify your
                                 email address using the verification
@@ -356,7 +356,7 @@ AI Reviewer
                                     </strong>
 
                                     Never share this verification
-                                    code with anyone. AI Reviewer
+                                    code with anyone. AI BrandPlus
                                     will never ask you to share your
                                     OTP.
                                 </p>
@@ -408,7 +408,7 @@ AI Reviewer
                                     margin-bottom:6px;
                                 "
                             >
-                                AI Reviewer
+                                AI BrandPlus
                             </div>
 
                             <div
@@ -429,7 +429,7 @@ AI Reviewer
                                     color:#cbd5e1;
                                 "
                             >
-                                © AI Reviewer. All rights reserved.
+                                © AI BrandPlus. All rights reserved.
                             </div>
 
                         </td>

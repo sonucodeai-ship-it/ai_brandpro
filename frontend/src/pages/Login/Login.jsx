@@ -638,8 +638,15 @@ export default function Login() {
             )}
 
             <footer className="auth-footer">
-              <Icon name="shield" />
-              <span>Secure authentication and email verification</span>
+              <div className="auth-footer-security">
+                <Icon name="shield" />
+                <span>Secure authentication and email verification</span>
+              </div>
+              <nav className="auth-legal-links" aria-label="Legal information">
+                <a href="/privacy">Privacy Policy</a>
+                <span aria-hidden="true">·</span>
+                <a href="/terms">Terms of Service</a>
+              </nav>
             </footer>
           </div>
         </section>

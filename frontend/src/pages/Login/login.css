@@ -1316,3 +1316,45 @@
     height: 54px;
   }
 }
+
+/* Public legal links on the existing welcome, login, and signup screens. */
+.auth-shell-welcome .auth-footer {
+  display: flex;
+}
+
+.auth-footer {
+  flex-direction: column;
+  gap: 10px;
+}
+
+.auth-footer-security {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+}
+
+.auth-legal-links {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.auth-legal-links a {
+  color: var(--auth-primary);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.auth-legal-links a:hover {
+  text-decoration: underline;
+}
+
+.auth-legal-links a:focus-visible {
+  outline: 2px solid rgba(36, 87, 214, .35);
+  outline-offset: 3px;
+  border-radius: 2px;
+}
