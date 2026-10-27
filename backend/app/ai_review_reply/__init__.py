@@ -1,1 +1,1 @@
-# AI Review Reply feature package.
+"""AI BrandPlus Google Business Profile integration."""
