@@ -73,7 +73,7 @@ import threading
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 from dotenv import find_dotenv, load_dotenv
 from google import genai
@@ -593,9 +593,24 @@ def _generate_with_gemini(
 
     details = " | ".join(errors)
 
+    if not attempted_indices:
+        # No API call was attempted: all configured keys may be cooling down.
+        status = get_gemini_key_status()
+        cooling_down = [
+            item["key_name"]
+            for item in status
+            if not item["available"]
+        ]
+        raise RuntimeError(
+            "No Gemini API keys are currently available. "
+            "All configured keys may be cooling down. "
+            f"Cooling down: {', '.join(cooling_down) or 'unknown'}. "
+            "Please retry shortly."
+        )
+
     raise RuntimeError(
-        "All available Gemini API keys failed for this request. "
-        f"Attempted: {attempted_key_names or 'none'}. "
+        "Gemini generation failed for all keys attempted in this request. "
+        f"Attempted: {attempted_key_names}. "
         f"Details: {details or 'No additional error details available.'}"
     )
 
@@ -611,48 +626,39 @@ def generate_ai_text(
     system_instruction: str | None = None,
     temperature: float | None = None,
     max_output_tokens: int | None = None,
+    response_validator: Callable[[str], Any] | None = None,
+    response_retry_instruction: str | None = None,
+    max_response_retries: int = 0,
 ) -> str:
     """
     Generate text through the configured AI provider.
 
-    This is the public application-level AI interface.
+    Provider/API retries and key failover are managed here. Feature modules
+    may optionally provide a response_validator callback to validate generated
+    content. If validation fails, the request is regenerated up to
+    max_response_retries times.
 
-    Feature modules should NOT:
-        - import google.genai
-        - create AI clients
-        - read API keys
-        - select models
-        - implement provider failover
+    The validator should return normally for valid output and raise an
+    exception with a concise reason for invalid output. Feature-specific
+    validation rules remain owned by the feature module.
 
-    They should only call this function.
+    Existing calls remain backward compatible because all new parameters
+    are optional and max_response_retries defaults to zero.
     """
-
     if not isinstance(prompt, str) or not prompt.strip():
-        raise ValueError(
-            "AI prompt cannot be empty."
-        )
+        raise ValueError("AI prompt cannot be empty.")
 
     if system_instruction is not None:
         if not isinstance(system_instruction, str):
-            raise ValueError(
-                "system_instruction must be a string or None."
-            )
-
-        system_instruction = (
-            system_instruction.strip()
-            or None
-        )
+            raise ValueError("system_instruction must be a string or None.")
+        system_instruction = system_instruction.strip() or None
 
     try:
         resolved_temperature = (
-            DEFAULT_TEMPERATURE
-            if temperature is None
-            else float(temperature)
+            DEFAULT_TEMPERATURE if temperature is None else float(temperature)
         )
     except (TypeError, ValueError) as error:
-        raise ValueError(
-            "AI temperature must be a valid number."
-        ) from error
+        raise ValueError("AI temperature must be a valid number.") from error
 
     try:
         resolved_max_output_tokens = (
@@ -665,30 +671,79 @@ def generate_ai_text(
             "AI max_output_tokens must be a valid integer."
         ) from error
 
+    try:
+        resolved_response_retries = int(max_response_retries)
+    except (TypeError, ValueError) as error:
+        raise ValueError("max_response_retries must be an integer.") from error
+
+    if not 0 <= resolved_temperature <= 2:
+        raise ValueError("AI temperature must be between 0 and 2.")
+
+    if resolved_max_output_tokens <= 0:
+        raise ValueError("AI max_output_tokens must be greater than zero.")
+
+    if resolved_response_retries < 0 or resolved_response_retries > 3:
+        raise ValueError("max_response_retries must be between 0 and 3.")
+
+    if response_validator is not None and not callable(response_validator):
+        raise ValueError("response_validator must be callable or None.")
+
     config = AIGenerationConfig(
         temperature=resolved_temperature,
         max_output_tokens=resolved_max_output_tokens,
     )
 
-    if config.temperature < 0:
-        raise ValueError(
-            "AI temperature cannot be negative."
-        )
+    if AI_PROVIDER != "gemini":
+        raise RuntimeError(f"Unsupported AI provider: '{AI_PROVIDER}'.")
 
-    if config.max_output_tokens <= 0:
-        raise ValueError(
-            "AI max_output_tokens must be greater than zero."
-        )
+    request_prompt = prompt.strip()
+    validation_errors: list[str] = []
 
-    if AI_PROVIDER == "gemini":
-        return _generate_with_gemini(
-            prompt=prompt.strip(),
+    for response_attempt in range(resolved_response_retries + 1):
+        attempt_prompt = request_prompt
+
+        # Provide a corrective instruction to the model after validation fails.
+        if response_attempt > 0:
+            correction = (
+                response_retry_instruction.strip()
+                if response_retry_instruction and response_retry_instruction.strip()
+                else "The previous response did not pass validation. "
+                     "Correct the response and return only the requested output."
+            )
+            previous_error = validation_errors[-1] if validation_errors else ""
+            attempt_prompt = (
+                f"{request_prompt}\n\n"
+                f"CORRECTION REQUIRED: {correction}\n"
+                f"Validation issue: {previous_error}\n"
+                "Return a corrected response only."
+            )
+
+        output = _generate_with_gemini(
+            prompt=attempt_prompt,
             system_instruction=system_instruction,
             config=config,
         )
 
+        if response_validator is None:
+            return output
+
+        try:
+            response_validator(output)
+            return output
+        except Exception as error:
+            reason = str(error).strip() or error.__class__.__name__
+            validation_errors.append(reason)
+            print(
+                "AI response validation failed "
+                f"(attempt={response_attempt + 1}/"
+                f"{resolved_response_retries + 1}, "
+                f"reason={reason[:300]})"
+            )
+
     raise RuntimeError(
-        f"Unsupported AI provider: '{AI_PROVIDER}'."
+        "AI returned content that did not pass validation after "
+        f"{resolved_response_retries + 1} attempt(s). "
+        f"Last validation issue: {validation_errors[-1][:300]}"
     )
 
 

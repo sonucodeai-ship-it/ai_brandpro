@@ -9,6 +9,9 @@ function BusinessInfo() {
   const formRef = useRef(null);
 
   const [formData, setFormData] = useState({
+    owner_name: "",
+    phone_number: "",
+    staff_members: [],
     business_name: "",
     business_type: "",
     about_business: "",
@@ -51,6 +54,15 @@ function BusinessInfo() {
 
         if (!cancelled && data.business_id) {
           setFormData({
+            owner_name: data.owner_name || "",
+            phone_number: data.phone_number || "",
+            staff_members: Array.isArray(data.staff_members)
+              ? data.staff_members.map((staff) => ({
+                  business_staff_id: staff.business_staff_id ?? null,
+                  role: staff.role || "",
+                  name: staff.name || "",
+                }))
+              : [],
             business_name: data.business_name || "",
             business_type: data.business_type || "",
             about_business: data.about_business || "",
@@ -80,6 +92,40 @@ function BusinessInfo() {
     setSuccess("");
   };
 
+  // Add an editable staff row; it is persisted when the main form is saved.
+  const handleAddStaff = () => {
+    setFormData((current) => ({
+      ...current,
+      staff_members: [...current.staff_members, {
+        business_staff_id: null,
+        role: "",
+        name: "",
+      }],
+    }));
+    setError("");
+    setSuccess("");
+  };
+
+  const handleStaffChange = (index, field, value) => {
+    setFormData((current) => ({
+      ...current,
+      staff_members: current.staff_members.map((staff, staffIndex) =>
+        staffIndex === index ? { ...staff, [field]: value } : staff
+      ),
+    }));
+    setError("");
+    setSuccess("");
+  };
+
+  const handleRemoveStaff = (index) => {
+    setFormData((current) => ({
+      ...current,
+      staff_members: current.staff_members.filter((_, staffIndex) => staffIndex !== index),
+    }));
+    setError("");
+    setSuccess("");
+  };
+
   const handleSubmit = async (event) => {
     event.preventDefault();
     if (!formRef.current?.reportValidity()) return;
@@ -102,6 +148,13 @@ function BusinessInfo() {
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
+          owner_name: formData.owner_name.trim(),
+          phone_number: formData.phone_number.trim(),
+          staff_members: formData.staff_members.map((staff) => ({
+            ...(staff.business_staff_id ? { business_staff_id: staff.business_staff_id } : {}),
+            role: staff.role.trim(),
+            name: staff.name.trim(),
+          })),
           business_name: formData.business_name.trim(),
           business_type: formData.business_type.trim(),
           about_business: formData.about_business.trim(),
@@ -175,6 +228,77 @@ function BusinessInfo() {
           </div>
 
           <form ref={formRef} onSubmit={handleSubmit}>
+            {/* OWNER NAME */}
+            <div className="business-info-field">
+              <label htmlFor="owner_name">Owner Name<span className="required-mark">*</span></label>
+              <div className="business-info-input-wrap">
+                <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <circle cx="12" cy="8" r="3.5" stroke="currentColor" strokeWidth="1.8" />
+                  <path d="M5 20c.5-3.5 3.2-5.5 7-5.5s6.5 2 7 5.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+                </svg>
+                <input id="owner_name" name="owner_name" type="text" placeholder="Enter the owner's full name"
+                  value={formData.owner_name} onChange={handleChange} maxLength={255} autoComplete="name" required />
+              </div>
+
+              <div className="business-info-staff-heading">
+                <div>
+                  <h3>Staff members</h3>
+                  <p>Add the people who work at your business.</p>
+                </div>
+                <button type="button" className="business-info-add-staff-button" onClick={handleAddStaff}>
+                  <span aria-hidden="true">＋</span> Add staff member
+                </button>
+              </div>
+
+              {formData.staff_members.length > 0 && (
+                <div className="business-info-staff-list">
+                  {formData.staff_members.map((staff, index) => (
+                    <fieldset className="business-info-staff-row" key={staff.business_staff_id ?? `new-${index}`}>
+                      <legend>Staff member {index + 1}</legend>
+                      <div className="business-info-staff-fields">
+                        <div className="business-info-field business-info-staff-field">
+                          <label htmlFor={`staff-role-${index}`}>Role<span className="required-mark">*</span></label>
+                          <div className="business-info-input-wrap">
+                            <input id={`staff-role-${index}`} type="text" value={staff.role}
+                              onChange={(event) => handleStaffChange(index, "role", event.target.value)}
+                              placeholder="e.g. Dentist, Manager" maxLength={100} required />
+                          </div>
+                        </div>
+                        <div className="business-info-field business-info-staff-field">
+                          <label htmlFor={`staff-name-${index}`}>Name<span className="required-mark">*</span></label>
+                          <div className="business-info-input-wrap">
+                            <input id={`staff-name-${index}`} type="text" value={staff.name}
+                              onChange={(event) => handleStaffChange(index, "name", event.target.value)}
+                              placeholder="Enter staff member's name" maxLength={255} required />
+                          </div>
+                        </div>
+                      </div>
+                      <button type="button" className="business-info-remove-staff-button"
+                        onClick={() => handleRemoveStaff(index)} aria-label={`Remove staff member ${index + 1}`}>
+                        Remove
+                      </button>
+                    </fieldset>
+                  ))}
+                </div>
+              )}
+              <span className="business-info-hint">Staff changes are saved when you select Save changes.</span>
+            </div>
+
+            {/* BUSINESS CONTACT PHONE */}
+            <div className="business-info-field">
+              <label htmlFor="phone_number">Phone Number<span className="required-mark">*</span></label>
+              <div className="business-info-input-wrap">
+                <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <path d="M7 3.8h10A1.8 1.8 0 0 1 18.8 5.6v12.8a1.8 1.8 0 0 1-1.8 1.8H7a1.8 1.8 0 0 1-1.8-1.8V5.6A1.8 1.8 0 0 1 7 3.8Z" stroke="currentColor" strokeWidth="1.8" />
+                  <path d="M10 17.2h4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+                </svg>
+                <input id="phone_number" name="phone_number" type="tel" inputMode="tel"
+                  placeholder="Enter business contact number" value={formData.phone_number}
+                  onChange={handleChange} maxLength={30} autoComplete="tel" required />
+              </div>
+              <span className="business-info-hint">Include the country code when appropriate, for example +91.</span>
+            </div>
+
             {/* =================================================
                 BUSINESS NAME
                 ================================================= */}

@@ -12,7 +12,7 @@ const MIN_QUESTIONS = 2;
 const MAX_QUESTIONS = 8;
 const DEFAULT_QUESTIONS = 4;
 const MIN_OPTIONS = 2;
-const MAX_OPTIONS = 8;
+const MAX_OPTIONS = 20;
 
 function QueryMaker() {
   const navigate = useNavigate();
@@ -1114,11 +1114,7 @@ function QueryMaker() {
                     </span>
 
                     <small>
-                      {
-                        question.options
-                          .length
-                      }{" "}
-                      options
+                      {question.options.length}/{MAX_OPTIONS} options
                     </small>
                   </div>
 
@@ -1211,7 +1207,9 @@ function QueryMaker() {
                         MAX_OPTIONS
                     }
                   >
-                    + Add option
+                    {question.options.length >= MAX_OPTIONS
+                      ? "Maximum 20 options reached"
+                      : `+ Add option (${MAX_OPTIONS - question.options.length} remaining)`}
                   </button>
 
                   {/* DIVIDER */}

@@ -181,7 +181,28 @@ function YourWebsite() {
       setWebsite(data.website || null);
       setWebsiteVersion(data.website_version || null);
       setQuestions(generatedQuestions);
-      setAnswers({});
+
+      // The backend saves first-run starter answers as normal answer records.
+      // Prefer persisted answers, with initial_answer as a compatibility fallback.
+      const generatedAnswers = data.answers && typeof data.answers === "object"
+        ? data.answers
+        : Object.fromEntries(
+            generatedQuestions
+              .filter((question) => question.initial_answer)
+              .map((question) => [
+                String(question.question_id),
+                String(question.initial_answer),
+              ])
+          );
+
+      setAnswers(
+        Object.fromEntries(
+          Object.entries(generatedAnswers).map(([questionId, answer]) => [
+            String(questionId),
+            answer == null ? "" : String(answer),
+          ])
+        )
+      );
       setColorTheme1(null);
       setColorTheme2(null);
       setSuccess("Your business-specific questions are ready.");

@@ -622,3 +622,79 @@
     transition-duration: .01ms !important;
   }
 }
+
+
+/* =========================================================
+   Owner and staff management fields
+   ========================================================= */
+.business-info-staff-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 22px 0 12px;
+}
+.business-info-staff-heading h3 {
+  margin: 0;
+  color: #292d4b;
+  font-size: 13px;
+  font-weight: 750;
+}
+.business-info-staff-heading p {
+  margin: 5px 0 0;
+  color: #858aa0;
+  font-size: 11px;
+  line-height: 1.5;
+}
+.business-info-add-staff-button,
+.business-info-remove-staff-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 38px;
+  padding: 0 12px;
+  border: 1px solid #dcd9ff;
+  border-radius: 10px;
+  background: #f7f6ff;
+  color: #5145f5;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 750;
+  cursor: pointer;
+  transition: background .18s ease, border-color .18s ease;
+}
+.business-info-add-staff-button:hover { background: #efedff; border-color: #bcb6ff; }
+.business-info-add-staff-button span { font-size: 17px; line-height: 1; }
+.business-info-staff-list { display: grid; gap: 12px; margin-bottom: 12px; }
+.business-info-staff-row {
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid #e5e6f2;
+  border-radius: 13px;
+  background: #fbfbff;
+}
+.business-info-staff-row legend {
+  padding: 0 6px;
+  color: #777c95;
+  font-size: 10px;
+  font-weight: 750;
+}
+.business-info-staff-fields { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; }
+.business-info-staff-field { min-width: 0; margin-bottom: 8px; }
+.business-info-staff-field .business-info-input-wrap { min-height: 45px; padding-inline: 11px; }
+.business-info-staff-field .business-info-input-wrap input { height: 43px; }
+.business-info-remove-staff-button {
+  min-height: 30px;
+  padding: 0 9px;
+  border-color: #f2d5d8;
+  background: #fff8f8;
+  color: #c23d4b;
+}
+.business-info-remove-staff-button:hover { background: #ffeded; border-color: #eeb9bf; }
+@media (max-width: 520px) {
+  .business-info-staff-heading { align-items: flex-start; flex-direction: column; }
+  .business-info-add-staff-button { width: 100%; }
+  .business-info-staff-fields { grid-template-columns: minmax(0, 1fr); gap: 0; }
+  .business-info-staff-row { padding: 12px; }
+}

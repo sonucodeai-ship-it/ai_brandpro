@@ -104,11 +104,51 @@ def generate_query_questions(
                 detail="Dashboard not found.",
             )
 
+        # Load staff belonging to this business and user. Staff context is
+        # optional: questionnaire generation must still work with no staff.
+        cursor.execute(
+            """
+            SELECT name, role
+            FROM business_staff
+            WHERE business_id = %s
+              AND user_id = %s
+            ORDER BY business_staff_id ASC
+            """,
+            (dashboard["business_id"], user_id),
+        )
+        staff_rows = cursor.fetchall() or []
+
+        staff_members = [
+            {
+                "name": str(row.get("name") or "").strip(),
+                "role": str(row.get("role") or "").strip(),
+            }
+            for row in staff_rows
+            if str(row.get("name") or "").strip()
+        ]
+
+        # Include owner_name only when present. This field is part of the
+        # business profile and should not be required for generation.
+        cursor.execute(
+            """
+            SELECT owner_name
+            FROM business_info
+            WHERE business_id = %s
+              AND user_id = %s
+            LIMIT 1
+            """,
+            (dashboard["business_id"], user_id),
+        )
+        owner_row = cursor.fetchone() or {}
+        owner_name = str(owner_row.get("owner_name") or "").strip()
+
         questions = generate_questions(
             business_name=dashboard["business_name"],
             business_type=dashboard["business_type"],
             about_business=dashboard["about_business"],
             year_established=dashboard["year_established"],
+            owner_name=owner_name,
+            staff_members=staff_members,
             question_count=question_count,
         )
 
@@ -121,10 +161,15 @@ def generate_query_questions(
     except HTTPException:
         raise
     except Exception as error:
-        print(f"Query generation error: {error}")
+        # Keep detailed diagnostics in server logs, but return a useful and
+        # non-sensitive message to the frontend.
+        print(f"Query generation error: {type(error).__name__}: {error}")
         raise HTTPException(
-            status_code=500,
-            detail="Unable to generate questions.",
+            status_code=502,
+            detail=(
+                "The AI could not generate a valid questionnaire this time. "
+                "Please try again."
+            ),
         ) from error
     finally:
         if cursor:
@@ -294,10 +339,10 @@ def save_questions(
                     detail=f"Question {index} must have at least 2 options.",
                 )
 
-            if len(options) > 8:
+            if len(options) > 20:
                 raise HTTPException(
                     status_code=400,
-                    detail=f"Question {index} cannot have more than 8 options.",
+                    detail=f"Question {index} cannot have more than 20 options.",
                 )
 
             cleaned_options = [

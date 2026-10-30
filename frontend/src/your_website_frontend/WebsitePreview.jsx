@@ -8,6 +8,40 @@ const API_BASE_URL =
   import.meta.env.VITE_BACKEND_URL ||
   "http://127.0.0.1:8000";
 
+
+/**
+ * Remove only the mobile contact-bar backdrop from generated showcase HTML.
+ * The Call and WhatsApp buttons retain their own colors, shadows, and behavior.
+ * Desktop styling is intentionally unchanged.
+ */
+function applyMobileContactBarFix(htmlDocument) {
+  const mobileContactStyle = `
+    <style id="vg-mobile-contact-transparent-override">
+      @media (max-width: 640px) {
+        #vg-contact-actions.vg-contact-actions {
+          background: transparent !important;
+          border-top: 0 !important;
+          box-shadow: none !important;
+          backdrop-filter: none !important;
+          -webkit-backdrop-filter: none !important;
+        }
+      }
+    </style>
+  `;
+
+  // Avoid inserting the same override more than once.
+  if (htmlDocument.includes('id="vg-mobile-contact-transparent-override"')) {
+    return htmlDocument;
+  }
+
+  if (/<\/head\s*>/i.test(htmlDocument)) {
+    return htmlDocument.replace(/<\/head\s*>/i, `${mobileContactStyle}</head>`);
+  }
+
+  // Defensive fallback for generated documents that omit a closing head tag.
+  return `${mobileContactStyle}${htmlDocument}`;
+}
+
 function WebsitePreview() {
   const { publicUrlId } = useParams();
 
@@ -53,7 +87,7 @@ function WebsitePreview() {
         }
 
         if (active) {
-          setHtml(htmlCode);
+          setHtml(applyMobileContactBarFix(htmlCode));
           setBusiness(data.business || null);
         }
       } catch (err) {
@@ -104,7 +138,7 @@ function WebsitePreview() {
         title={business?.business_name || "Business website"}
         className="generated-site-frame"
         srcDoc={html}
-        sandbox="allow-scripts allow-forms allow-popups allow-modals"
+        sandbox="allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox allow-modals"
         referrerPolicy="no-referrer"
       />
     </main>

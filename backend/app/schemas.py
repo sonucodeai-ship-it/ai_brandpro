@@ -129,7 +129,18 @@ class MessageResponse(BaseModel):
 # =========================================================
 
 
+class BusinessStaffRequest(BaseModel):
+    business_staff_id: int | None = Field(default=None, ge=1)
+    role: str = Field(..., min_length=1, max_length=100)
+    name: str = Field(..., min_length=1, max_length=255)
+
+
 class BusinessInfoRequest(BaseModel):
+    owner_name: str = Field(..., min_length=2, max_length=255)
+    phone_number: str = Field(..., min_length=5, max_length=30)
+    # None means an older API client omitted staff data; [] means remove all staff.
+    staff_members: list[BusinessStaffRequest] | None = None
+
     business_name: str = Field(
         ...,
         min_length=2,
@@ -162,6 +173,9 @@ class BusinessInfoResponse(BaseModel):
     message: str
 
     business_id: int | None = None
+    owner_name: str | None = None
+    phone_number: str | None = None
+    staff_members: list[BusinessStaffRequest] = Field(default_factory=list)
     business_name: str | None = None
     business_type: str | None = None
     about_business: str | None = None

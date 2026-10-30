@@ -359,7 +359,7 @@ export default function Login() {
                 <div className="welcome-illustration" aria-hidden="true">
                   <img
                     className="welcome-illustration-image"
-                    src="/businesspro-storefront.png"
+                    src="/businesspro-storefront-transparent.webp"
                     alt=""
                     draggable="false"
                   />

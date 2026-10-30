@@ -16,6 +16,41 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 // CLIPBOARD HELPER
 // =========================================================
 
+// Synchronous copy is attempted during the original button click,
+// before opening Google can move focus away from this document.
+const copyTextToClipboardSync = (text) => {
+  const cleanText = text?.trim();
+  if (!cleanText) return false;
+
+  const textarea = document.createElement("textarea");
+  textarea.value = cleanText;
+  textarea.setAttribute("readonly", "");
+  textarea.setAttribute("aria-hidden", "true");
+  textarea.style.position = "fixed";
+  textarea.style.left = "0";
+  textarea.style.top = "0";
+  textarea.style.width = "1px";
+  textarea.style.height = "1px";
+  textarea.style.padding = "0";
+  textarea.style.border = "0";
+  textarea.style.opacity = "0.01";
+  textarea.style.fontSize = "16px";
+
+  document.body.appendChild(textarea);
+  textarea.focus({ preventScroll: true });
+  textarea.select();
+  textarea.setSelectionRange(0, textarea.value.length);
+
+  let copied = false;
+  try {
+    copied = document.execCommand("copy");
+  } finally {
+    document.body.removeChild(textarea);
+  }
+
+  return copied;
+};
+
 const copyTextToClipboard = async (text) => {
   const cleanText = text?.trim();
 
@@ -336,100 +371,91 @@ function ReviewPage() {
   // GOOGLE REVIEW
   // =======================================================
 
-  const handleGoogleReview = async () => {
+  const handleGoogleReview = () => {
     const reviewText = review.trim();
 
     if (!reviewText) {
-      setError(
-        "Please generate a review before continuing to Google."
-      );
+      setError("Please generate a review before continuing to Google.");
       return;
     }
 
     if (!googleReviewUrl) {
-      setError(
-        "The Google Business Review link is not available. Please contact the business."
-      );
+      setError("The Google Business Review link is not available. Please contact the business.");
       return;
     }
 
-    if (isOpeningGoogle) {
-      return;
-    }
+    if (isOpeningGoogle) return;
 
     setIsOpeningGoogle(true);
     setError("");
+    setCopied(false);
 
-    /*
-     * IMPORTANT:
-     * Open Google synchronously from the user's click.
-     * This gives the browser the best chance of allowing the popup.
-     *
-     * The returned window object is the only reliable signal available
-     * to this application for determining whether the browser allowed
-     * the Google window to open.
-     */
-    const googleWindow = window.open(
-      googleReviewUrl,
-      "_blank"
-    );
+    // IMPORTANT: Copy synchronously while this page still has focus.
+    // Opening Google first can cause Clipboard API to throw
+    // NotAllowedError: Document is not focused.
+    let copySucceeded = false;
+    try {
+      copySucceeded = copyTextToClipboardSync(reviewText);
+    } catch (copyError) {
+      console.error("Synchronous review copy failed:", copyError);
+    }
 
-    /*
-     * Determine the Google hand-off status independently from clipboard
-     * operations. Clipboard permission can fail even when Google opens
-     * successfully, so it must never change the Google-open status.
-     */
+    // If the synchronous fallback is unavailable, start the Clipboard API
+    // call before opening Google. Do not await it before opening the URL,
+    // otherwise the browser may block the popup after user activation expires.
+    let clipboardPromise = null;
+    if (!copySucceeded && navigator.clipboard?.writeText) {
+      try {
+        clipboardPromise = navigator.clipboard.writeText(reviewText);
+      } catch (copyError) {
+        console.error("Unable to start clipboard copy:", copyError);
+      }
+    }
+
+    // Keep window.open directly inside the click handler for popup permission.
+    const googleWindow = window.open(googleReviewUrl, "_blank");
+
     if (!googleWindow) {
-      await saveSubmitStatus(0);
-
+      void saveSubmitStatus(0);
       setError(
-        "Google could not be opened. Please allow pop-ups and try again."
+        copySucceeded
+          ? "The review was copied, but Google could not be opened. Please allow pop-ups and try again."
+          : "Google could not be opened. Please allow pop-ups and try again."
       );
-
       setIsOpeningGoogle(false);
       return;
     }
 
-    /*
-     * Google was successfully opened.
-     *
-     * IMPORTANT:
-     * submit_status = 1 means the customer was successfully handed off
-     * to Google. It does NOT mean that Google confirmed a review was
-     * actually submitted. Google is a separate cross-origin website and
-     * this application cannot verify the final submission from here.
-     */
-    await saveSubmitStatus(1);
+    // Saving status is independent; never delay the clipboard operation for it.
+    void saveSubmitStatus(1);
 
-    /*
-     * Clipboard handling is intentionally independent from the Google
-     * hand-off status. If copying fails, Google is already open and the
-     * customer can still paste the review manually.
-     */
-    try {
-      await copyTextToClipboard(reviewText);
-
+    if (copySucceeded) {
       showCopiedState(3500);
-
-      /*
-       * We intentionally do not access or modify Google's page.
-       */
-      window.setTimeout(() => {
-        setError("");
-      }, 500);
-
-    } catch (copyError) {
-      console.error(
-        "Unable to copy review automatically:",
-        copyError
-      );
-
-      setError(
-        "Google is open. The review could not be copied automatically. Please copy it manually and paste it into the review box."
-      );
-    } finally {
+      setError("");
       setIsOpeningGoogle(false);
+      return;
     }
+
+    if (clipboardPromise) {
+      clipboardPromise
+        .then(() => {
+          showCopiedState(3500);
+          setError("");
+        })
+        .catch((copyError) => {
+          console.error("Unable to copy review automatically:", copyError);
+          setError(
+            "Google is open, but automatic copying was blocked by the browser. Return to this tab and use the Copy button, or select and copy the review manually."
+          );
+        })
+        .finally(() => setIsOpeningGoogle(false));
+      return;
+    }
+
+    setError(
+      "Google is open, but automatic copying was blocked by the browser. Return to this tab and use the Copy button, or select and copy the review manually."
+    );
+    setIsOpeningGoogle(false);
   };
 
 

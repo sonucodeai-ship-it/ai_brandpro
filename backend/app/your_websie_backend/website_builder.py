@@ -1,7 +1,12 @@
+import html as html_lib
 import json
+import logging
 import re
+from urllib.parse import quote
 
 from app.ai_management import generate_ai_text
+
+logger = logging.getLogger(__name__)
 
 
 def _extract_json(text: str) -> dict:
@@ -143,7 +148,13 @@ purchase, booking, or enquiry decision.
 
 RULES:
 - Ask 8 to 12 questions.
-- Do not ask for information already present in business_info.
+- Do not ask for information already present in business_info, including owner name,
+  business phone number, and staff names/roles.
+- Use the owner name, phone number, and saved staff names/roles to make
+  questions specific to this business where relevant. For example,
+  refer to known staff by their saved names and roles when asking how services
+  are delivered or which staff members handle them. Do not ask the owner to
+  re-enter those known details.
 - Do not ask technical questions.
 - Do not ask for passwords, API keys, or website-development details.
 - Do not invent prices, services, facilities, products, staff, claims, or policies.
@@ -155,6 +166,10 @@ RULES:
 - If exact prices are not available, allow the owner to say that pricing is
   enquiry-based or not published; do not force invented prices.
 - Do not repeat information already supplied in the business description.
+- The next AI stage will write answers, so focus this stage on excellent,
+  non-repetitive questions that reveal useful customer-facing information.
+- Use the saved owner and staff names/roles only where relevant; never invent
+  additional people or assign unsupported responsibilities.
 - Return only valid JSON.
 
 Return:
@@ -165,13 +180,242 @@ Return:
       "question_text": "Question",
       "input_type": "textarea",
       "required": true,
-      "placeholder": "Example",
+      "placeholder": "Short optional hint only",
       "helper_text": "Short help"
     }
   ]
 }
 """
 
+
+
+PROFESSIONAL_ANSWER_PROMPT = """
+You are a practical business-showcase content specialist. Create editable starter
+answers for a customer-facing digital showcase. Its core content is the actual
+menu, services, facilities, products, packages, options, and rates—not marketing
+copy. Answers must be point-to-point and easy to scan.
+
+IMPORTANT DISTINCTION
+- FACTS in the business profile are confirmed facts.
+- If a question needs details that are missing, create a useful CATEGORY-APPROPRIATE
+  SUGGESTED DRAFT where doing so is reasonable. Never pretend the suggestion is
+  confirmed or an official business price.
+- Do not invent the business's exact official prices, specific brands, credentials,
+  opening hours, policies, staff duties, or unique facilities.
+- Suggested menus/services/facilities and estimated prices must be represented
+  as editable draft content, but NEVER append warning/disclaimer sentences to
+  the answer field. Set needs_owner_confirmation=true for suggested content.
+
+SHOWCASE CONTENT REQUIREMENTS
+1. For a MENU question with no menu supplied, draft a compact, category-appropriate
+   sample menu with useful item names and realistic indicative INR prices when the
+   business is in India or no location/currency is supplied. Group items by 2–4
+   useful categories. Do not invent a signature dish or claim items are actually
+   sold; use the suggested-draft note.
+2. For RATE / PRICE / FEE / PACKAGE / MEMBERSHIP questions, do not answer only
+   "contact us for prices" when a useful indicative draft can be made. Provide
+   5–10 relevant itemized services or tiers with INR prices/ranges by default if
+   location/currency is not supplied. Keep the prices internally consistent and
+   appropriate to the business category and likely service level. These are
+   planning estimates, not researched or official prices; add the single compact
+   indicative-rate note at the end. If the category is regulated (medical, dental,
+   legal, financial), use broad indicative ranges only, avoid precise clinical
+   promises, and note briefly that final fees depend on consultation/case/materials.
+3. For SERVICES / TREATMENTS / PRODUCTS, provide a concise category-specific list
+   of relevant options. Separate confirmed offerings from suggested options; if
+   details are not in the profile, use the suggested-draft note once at the end.
+4. For FACILITIES / AMENITIES / EQUIPMENT, provide a short grouped list of the most
+   relevant facilities customers would expect to check for this category. Do not
+   claim these exist; if inferred, append the suggested-draft note once.
+5. For packages or memberships, show tier/name, key inclusions, and indicative
+   price/range when the question asks for rates. Do not make up discounts or
+   contractual terms.
+6. Use the business type and about_business to choose relevant content. Do not
+   suggest unrelated items or services just to reach a target count.
+7. If the profile contains real menu items, rates, services, or facilities, use
+   those first and preserve their exact names and prices. Do not overwrite them
+   with estimates. You may add a separate clearly marked suggested section only
+   when the question asks for a fuller list and the missing items are useful.
+
+POINT-TO-POINT WRITING RULES
+- Prefer short headings and bullet lines: "Item — ₹price" or "Facility — short detail".
+- Usually 4–10 bullets for list questions; 1–3 concise sentences for simple questions.
+- Target roughly 15–80 words. A menu or rate card may be longer if needed.
+- No introductions, repeated business name, slogans, generic benefits, filler,
+  long paragraphs, fake testimonials, ratings, awards, guarantees, or superlatives.
+- No placeholders such as [insert here], and no explanation of what the AI did.
+- Use supplied owner/staff names and roles only when relevant.
+- Return one answer for every question_key, exactly matching its key, as valid JSON:
+{
+  "answers": [
+    {"question_key": "exact_question_key", "answer_text": "Point-to-point answer", "needs_owner_confirmation": true}
+  ]
+}
+"""
+
+
+def _clean_initial_answer(answer: str) -> str:
+    """Remove AI-warning labels and tidy the answer without changing its facts."""
+    text = str(answer or "").strip()
+    warning_patterns = (
+        r"AI[- ]SUGGESTED\s+INDICATIVE\s+RATES\s*[—–-]?\s*confirm\s+and\s+edit\s+before\s+publishing\.?",
+        r"AI[- ]SUGGESTED\s+DRAFT\s*[—–-]?\s*confirm\s+the\s+listed\s+services/facilities\s+before\s+publishing\.?",
+        r"AI[- ]GENERATED\s+DRAFT[^.]*\.?",
+        r"confirm\s+and\s+edit\s+before\s+publishing\.?",
+        r"confirm\s+the\s+listed\s+services/facilities\s+before\s+publishing\.?",
+        r"suggested\s+draft\s*[—–-]\s*verify\s+availability\s+before\s+publishing\.?",
+        r"indicative\s+draft\s+rates\s*[—–-]\s*verify\s+prices\s+before\s+publishing\.?",
+        r"verify\s+availability\s+before\s+publishing\.?",
+    )
+    for pattern in warning_patterns:
+        text = re.sub(pattern, "", text, flags=re.IGNORECASE)
+
+    # Remove leading/trailing separator noise left behind after label removal.
+    text = re.sub(r"^[\s:;,.—–-]+|[\s:;—–-]+$", "", text)
+    text = re.sub(r"[ \t]+", " ", text)
+    text = re.sub(r"\n[ \t]*\n(?:[ \t]*\n)+", "\n\n", text)
+    return text.strip()
+
+
+def _safe_answer_fallback(question: dict, phone: str = "") -> str:
+    """Return a concise, honest fallback when the model gives no usable answer."""
+    text = str(question.get("question_text") or "").lower()
+    if any(term in text for term in ("price", "pricing", "rate", "fee", "cost", "menu", "package", "membership")):
+        return "Please contact us for the current menu and itemized rates."
+    if any(term in text for term in ("hour", "timing", "open", "opening", "closing")):
+        return "Please contact us to confirm our current opening hours."
+    if any(term in text for term in ("service", "treatment", "product", "menu item", "offering")):
+        return "Please contact us for the current list of available services and offerings."
+    if any(term in text for term in ("facility", "amenity", "equipment")):
+        return "Please contact us to confirm which facilities are currently available."
+    if phone:
+        return f"Please contact us at {phone} for the latest details."
+    return "Please contact the business for the latest confirmed details."
+
+
+def _generate_professional_initial_answers(
+    business: dict,
+    questions: list[dict],
+) -> list[dict]:
+    """Generate a dedicated, business-aware answer draft for every question.
+
+    This is intentionally a separate AI pass from question generation: the
+    model can analyze the complete questionnaire and business profile before
+    composing useful, coherent answers (especially service and rate lists).
+    """
+    business_context = {
+        "business_name": business.get("business_name", ""),
+        "business_type": business.get("business_type", ""),
+        "about_business": business.get("about_business", ""),
+        "year_established": business.get("year_established", ""),
+        "owner_name": business.get("owner_name", ""),
+        "phone_number": business.get("phone_number", ""),
+        "staff_members": business.get("staff_members", []),
+    }
+    question_context = [
+        {
+            "question_key": q["question_key"],
+            "question_text": q["question_text"],
+            "helper_text": q.get("helper_text", ""),
+        }
+        for q in questions
+    ]
+    prompt = f"""
+{PROFESSIONAL_ANSWER_PROMPT}
+
+BUSINESS PROFILE (source facts; do not alter these facts):
+{json.dumps(business_context, ensure_ascii=False, indent=2, default=str)}
+
+QUESTIONS TO ANSWER:
+{json.dumps(question_context, ensure_ascii=False, indent=2)}
+
+Create a genuinely useful, editable showcase draft for every question.
+Prioritize menu items, services, facilities, products, packages, and rates.
+For missing menus/rate cards, create plausible category-specific indicative
+suggestions rather than returning contact-only text. Use INR when no currency
+or location is supplied. Clearly distinguish suggestions from confirmed facts
+using needs_owner_confirmation=true internally; do not append warning text. Keep all answers
+point-to-point and omit filler. Never imply an estimate is an official price.
+"""
+    data = _generate_json(
+        prompt,
+        temperature=0.55,
+        max_output_tokens=7000,
+    )
+    raw_answers = data.get("answers")
+    if not isinstance(raw_answers, list):
+        raise RuntimeError("AI did not return professional website answers.")
+
+    by_key: dict[str, dict] = {}
+    for item in raw_answers:
+        if isinstance(item, dict):
+            key = str(item.get("question_key", "")).strip()
+            if key:
+                by_key[key] = item
+
+    # Repair pass: a showcase pricing/menu answer without any itemized numeric
+    # prices is not useful enough. Ask the model specifically for the missing
+    # rate cards instead of silently accepting a contact-only answer.
+    pricing_terms = ("price", "pricing", "rate", "fee", "cost", "menu", "package", "membership", "tariff")
+    priced_answers = {}
+    missing_priced_questions = []
+    for question in questions:
+        qtext = str(question.get("question_text") or "").lower()
+        if not any(term in qtext for term in pricing_terms):
+            continue
+        item = by_key.get(question["question_key"], {})
+        candidate = _clean_initial_answer(str(item.get("answer_text") or ""))
+        # Treat explicit enquiry-only pricing as valid only when the business
+        # profile itself says rates are enquiry-based/not published.
+        profile_text = " ".join(str(business.get(k) or "") for k in ("about_business", "business_type")).lower()
+        explicitly_unpublished = any(token in profile_text for token in ("prices on enquiry", "pricing on request", "rates on request", "price list not published", "enquiry-based pricing"))
+        has_price = bool(re.search(r"(?:₹|\bINR\b|\bRs\.?\s*)\s*\d|\b\d{2,}(?:\s*[-–to]+\s*\d{2,})?\s*(?:₹|INR|Rs\.?)?", candidate, flags=re.IGNORECASE))
+        if has_price or explicitly_unpublished:
+            priced_answers[question["question_key"]] = item
+        else:
+            missing_priced_questions.append(question)
+
+    if missing_priced_questions:
+        repair_prompt = f"""
+You are preparing concise, point-to-point content for a digital business showcase.
+Business profile (confirmed facts):
+{json.dumps(business_context, ensure_ascii=False, indent=2, default=str)}
+
+Create ONLY the missing menu/rate/package answers listed below:
+{json.dumps([{ "question_key": q["question_key"], "question_text": q["question_text"], "helper_text": q.get("helper_text", "") } for q in missing_priced_questions], ensure_ascii=False, indent=2)}
+
+Requirements:
+- Do NOT answer with only "contact us for prices".
+- For a menu question, provide 6-10 relevant menu items, grouped into concise categories, with realistic indicative INR prices when currency/location is not supplied.
+- For rate/service/package/membership questions, provide 5-8 relevant itemized entries or tiers with realistic indicative prices/ranges, appropriate to this business category. Use broad ranges for regulated professional/medical services.
+- Never claim suggested prices are official. Do not append any warning or disclaimer sentence to answer_text.
+- Use confirmed profile details where available; do not invent brands, credentials, official policies, or unrelated offerings.
+- Format as short bullets, ideally "Item — ₹price". No introductions, filler, slogans, or paragraphs explaining the AI.
+- Return valid JSON only: {{"answers":[{{"question_key":"exact key","answer_text":"...","needs_owner_confirmation":true}}]}}
+"""
+        try:
+            repair_data = _generate_json(repair_prompt, temperature=0.35, max_output_tokens=4500)
+            repaired = repair_data.get("answers", [])
+            if isinstance(repaired, list):
+                for item in repaired:
+                    if isinstance(item, dict) and item.get("question_key"):
+                        key = str(item["question_key"]).strip()
+                        if key in {q["question_key"] for q in missing_priced_questions}:
+                            by_key[key] = item
+        except Exception:
+            logger.exception("Showcase answer rate-card repair pass failed; retaining first-pass answers.")
+
+    phone = str(business.get("phone_number") or "").strip()
+    for question in questions:
+        item = by_key.get(question["question_key"], {})
+        answer = str(item.get("answer_text") or "").strip()
+
+        answer = _clean_initial_answer(answer)
+        if not answer:
+            answer = _safe_answer_fallback(question, phone)
+
+        question["initial_answer"] = answer[:10000]
+    return questions
 
 def generate_website_questions(business: dict) -> list[dict]:
     prompt = f"""
@@ -182,8 +426,13 @@ Name: {business.get("business_name", "")}
 Type: {business.get("business_type", "")}
 About: {business.get("about_business", "")}
 Established: {business.get("year_established", "")}
+Owner name: {business.get("owner_name", "")}
+Business phone number: {business.get("phone_number", "")}
+Saved staff members and roles:
+{json.dumps(business.get("staff_members", []), ensure_ascii=False)}
 
-Create the questionnaire specifically for this business.
+Create the questionnaire and editable initial answers specifically for this business.
+The initial answers are starter content only. Do not present missing facts as known.
 """
 
     data = _generate_json(
@@ -222,6 +471,21 @@ Create the questionnaire specifically for this business.
             )
         ).strip() or f"question_{index}"
 
+        initial_answer = str(
+            item.get("initial_answer", "")
+        ).strip()[:10000]
+
+        # Never leave the textarea with only a placeholder. If the model omits
+        # starter copy, provide truthful contact-based text using known details.
+        initial_answer = _clean_initial_answer(initial_answer)
+        if (
+            not initial_answer
+            or initial_answer.lower().startswith(("example:", "e.g.", "eg."))
+            or "[" in initial_answer
+            or "]" in initial_answer
+        ):
+            initial_answer = _safe_answer_fallback(item, str(business.get("phone_number") or "").strip())
+
         normalized.append(
             {
                 "question_order": index,
@@ -237,6 +501,7 @@ Create the questionnaire specifically for this business.
                 "helper_text": str(
                     item.get("helper_text", "")
                 ).strip()[:500],
+                "initial_answer": initial_answer,
             }
         )
 
@@ -245,7 +510,9 @@ Create the questionnaire specifically for this business.
             "AI generated too few useful website questions."
         )
 
-    return normalized
+    # Second AI pass: draft concise answers grounded in the business profile.
+    # Missing facts and prices must not be fabricated.
+    return _generate_professional_initial_answers(business, normalized)
 
 
 def _format_answers(answers: list[dict]) -> str:
@@ -747,6 +1014,52 @@ def _validate_html(html: str) -> str:
     return cleaned
 
 
+SHOWCASE_ART_DIRECTION_PROMPT = """
+You are a senior commercial showcase art director and information architect.
+Your first job is to think like a customer looking at a business's digital
+showcase, not like a web agency building a conventional website.
+
+The product is a DIGITAL SHOWCASE for displaying a business's actual:
+- menu items and food/drink options
+- services, treatments, and facilities
+- product catalogue and product variants
+- price list, rate card, packages, and memberships
+- amenities, equipment, included features, and customer options
+- important conditions and practical visit/enquiry information
+
+Analyze the business profile and owner answers together. Choose the showcase
+format, content hierarchy, visual style, and interaction pattern that best fit
+this specific business. A restaurant should feel like a premium menu; a clinic
+like a treatment and fee guide; a salon like a service menu and price board; a
+gym like a facilities and membership guide; a hotel like an amenities, room,
+and package showcase; a retailer like a browsable product catalogue. Do not
+force these examples onto unrelated businesses.
+
+Return a concise JSON design brief with:
+{
+  "showcase_type": "short description of the most suitable showcase format",
+  "customer_priority": "what customers most need to see first",
+  "visual_direction": "specific art direction, mood, typography and composition",
+  "palette_direction": "business-appropriate color direction",
+  "content_hierarchy": ["ordered section labels based on available information"],
+  "presentation_patterns": ["specific UI patterns suited to the content"],
+  "important_content": ["specific information from the answers that deserves prominence"],
+  "avoid": ["design mistakes to avoid for this business"]
+}
+
+Rules:
+- The design brief must be grounded in business_info and the owner answers.
+- Never add services, menu items, facilities, packages, prices, or policies.
+- If owner answers contain clearly marked AI-suggested draft rates/items, treat
+  them as unconfirmed draft content. Preserve their draft labels and do not
+  imply they are official until the owner confirms them.
+- Prioritize useful information over marketing copy.
+- Avoid generic hero sections, generic testimonials, fabricated ratings,
+  fake stats, empty slogans, and standard corporate-site layouts.
+- Do not include any HTML or CSS in this design brief.
+- Return valid JSON only.
+"""
+
 WEBSITE_HTML_PROMPT = """
 You are a senior award-winning web designer, visual art director,
 commercial showcase designer, UX designer, and front-end engineer.
@@ -1021,6 +1334,176 @@ Do NOT mechanically follow a fixed template.
 Build this as a custom customer-facing showcase for this exact business.
 """
 
+def _normalize_contact_phone(phone_number: str) -> tuple[str, str]:
+    """
+    Return (tel_uri, whatsapp_digits).
+    Ten-digit Indian numbers are normalized to country code 91.
+    Numbers already containing an international prefix retain it.
+    """
+    raw = str(phone_number or "").strip()
+    digits = re.sub(r"\D", "", raw)
+    if not digits:
+        return "", ""
+
+    if raw.startswith("+"):
+        international_digits = digits
+    elif len(digits) == 10:
+        international_digits = "91" + digits
+    elif len(digits) == 11 and digits.startswith("0"):
+        international_digits = "91" + digits[1:]
+    elif len(digits) == 12 and digits.startswith("91"):
+        international_digits = digits
+    else:
+        # Preserve numbers that already appear to include a country code.
+        international_digits = digits
+
+    tel_uri = "+" + international_digits
+    return tel_uri, international_digits
+
+
+def _inject_contact_actions(html_document: str, business: dict) -> str:
+    """
+    Add reliable Call and WhatsApp actions independently of AI output.
+    The action bar is responsive, accessible, and only shown when a phone
+    number is available in the saved business profile.
+    """
+    if 'id="vg-contact-actions"' in html_document:
+        return html_document
+
+    phone = str(business.get("phone_number") or "").strip()
+    tel_uri, whatsapp_digits = _normalize_contact_phone(phone)
+    if not tel_uri or not whatsapp_digits:
+        return html_document
+
+    business_name = html_lib.escape(
+        str(business.get("business_name") or "our business").strip(),
+        quote=True,
+    )
+    message = quote(
+        f"Hello {str(business.get('business_name') or 'there').strip()}, I found your website and would like to know more about your services."
+    )
+    tel_href = html_lib.escape(tel_uri, quote=True)
+    wa_href = f"https://wa.me/{whatsapp_digits}?text={message}"
+
+    contact_markup = f"""
+<div id="vg-contact-actions" class="vg-contact-actions" aria-label="Contact {business_name}">
+  <a class="vg-contact-action vg-contact-call" href="tel:{tel_href}" aria-label="Call {business_name}">
+    <span class="vg-contact-action-icon" aria-hidden="true">☎</span>
+    <span>Call Now</span>
+  </a>
+  <a class="vg-contact-action vg-contact-whatsapp" href="{wa_href}" target="_blank" rel="noopener noreferrer" aria-label="Message {business_name} on WhatsApp">
+    <span class="vg-contact-action-icon" aria-hidden="true">✆</span>
+    <span>WhatsApp</span>
+  </a>
+</div>
+"""
+    contact_styles = """
+<style id="vg-contact-actions-styles">
+  *, *::before, *::after { box-sizing: border-box; }
+  html { width: 100%; max-width: 100%; overflow-x: clip; scroll-behavior: smooth; }
+  body { max-width: 100%; overflow-x: clip; }
+  img, video, iframe, svg { max-width: 100%; }
+  #vg-contact-actions.vg-contact-actions {
+    position: fixed;
+    z-index: 2147483000;
+    right: max(22px, env(safe-area-inset-right));
+    bottom: max(22px, env(safe-area-inset-bottom));
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    max-width: calc(100vw - 32px);
+    font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+  #vg-contact-actions .vg-contact-action {
+    min-height: 48px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 9px;
+    padding: 12px 18px;
+    border: 1px solid rgba(255,255,255,.18);
+    border-radius: 999px;
+    box-shadow: 0 8px 24px rgba(15,23,42,.20);
+    color: #fff !important;
+    text-decoration: none !important;
+    font-size: 14px;
+    font-weight: 700;
+    line-height: 1.2;
+    white-space: nowrap;
+    -webkit-tap-highlight-color: transparent;
+    transition: transform .18s ease, box-shadow .18s ease, filter .18s ease;
+  }
+  #vg-contact-actions .vg-contact-action:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 28px rgba(15,23,42,.24);
+    filter: brightness(1.04);
+  }
+  #vg-contact-actions .vg-contact-action:focus-visible {
+    outline: 3px solid #111827;
+    outline-offset: 3px;
+  }
+  #vg-contact-actions .vg-contact-call { background: #172033; }
+  #vg-contact-actions .vg-contact-whatsapp { background: #16834a; }
+  #vg-contact-actions .vg-contact-action-icon { font-size: 17px; line-height: 1; }
+  @media (max-width: 640px) {
+    body { padding-bottom: calc(82px + env(safe-area-inset-bottom)) !important; }
+    #vg-contact-actions.vg-contact-actions {
+      right: 0;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      max-width: none;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: 10px;
+      padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
+      background: rgba(255,255,255,.96);
+      border-top: 1px solid rgba(15,23,42,.10);
+      box-shadow: 0 -6px 24px rgba(15,23,42,.08);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+    }
+    #vg-contact-actions .vg-contact-action {
+      width: 100%;
+      min-width: 0;
+      min-height: 48px;
+      padding: 12px 8px;
+      border-radius: 13px;
+      font-size: 14px;
+      gap: 7px;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    #vg-contact-actions .vg-contact-action { transition: none; }
+  }
+</style>
+"""
+    if re.search(r"</head\s*>", html_document, flags=re.IGNORECASE):
+        html_document = re.sub(
+            r"</head\s*>",
+            contact_styles + "\n</head>",
+            html_document,
+            count=1,
+            flags=re.IGNORECASE,
+        )
+    else:
+        html_document = contact_styles + html_document
+
+    if re.search(r"</body\s*>", html_document, flags=re.IGNORECASE):
+        html_document = re.sub(
+            r"</body\s*>",
+            contact_markup + "\n</body>",
+            html_document,
+            count=1,
+            flags=re.IGNORECASE,
+        )
+    else:
+        html_document += contact_markup
+
+    return html_document
+
+
 
 
 def generate_website_html(
@@ -1031,20 +1514,15 @@ def generate_website_html(
     color_theme_2: str | None = None,
 ) -> str:
     """
-    Generate the final website HTML using business information,
-    owner answers, and backend-selected real image assets.
+    Generate the showcase using the earlier proven HTML architecture prompt.
+    The answer-generation layer supplies the content; this layer controls its
+    visual hierarchy, responsive presentation, and interactions.
     """
-
     answers_text = _format_answers(answers)
-
     if not answers_text:
-        raise RuntimeError(
-            "No valid website answers were provided."
-        )
+        raise RuntimeError("No valid website answers were provided.")
 
-    image_assets_text = _format_image_assets(
-        image_assets
-    )
+    image_assets_text = _format_image_assets(image_assets)
 
     color_1 = str(color_theme_1 or "").strip() or "AI CHOICE"
     color_2 = str(color_theme_2 or "").strip() or "AI CHOICE"
@@ -1067,102 +1545,117 @@ def generate_website_html(
     else:
         color_direction = (
             f"Owner explicitly selected the two theme colors: {color_1} and {color_2}. "
-            "Use these exact colors as the core brand palette. Do not replace them "
-            "with different colors."
+            "Use these exact colors as the core brand palette. Do not replace them."
         )
 
     prompt = f"""
 {WEBSITE_HTML_PROMPT}
 
-COLOR THEME DIRECTION
+RESTORED SHOWCASE ARCHITECTURE — IMPORTANT
+Use the strong visual architecture and category-specific composition described
+above. Do not simplify this into a generic template or plain list of cards.
 
+FACILITY SHOWCASE PRIORITY
+If the supplied answers contain facilities, amenities, equipment, rooms,
+treatment areas, or customer-use features:
+- Create a clearly visible, dedicated Facilities / Amenities section.
+- Place it among the first major content sections, not hidden at the bottom.
+- Use an appropriate visual treatment such as icon-led facility tiles,
+  editorial image-and-detail blocks, grouped amenity panels, or a refined
+  facility grid.
+- Give each facility a concise label and only the detail present in the answers.
+- Do not omit facility entries or merge unrelated facilities into vague text.
+- Use supplied images as visual support for relevant facility groups.
+If no facility information exists in the answers, do not fabricate a section.
+
+OFFERING AND PRICING PRIORITY
+- Put the actual services, menu, products, packages, and rate information
+  before lengthy introductory/about content.
+- Preserve all supplied list items and their prices.
+- Convert point-to-point answers into purposeful visual sections, not walls
+  of text and not one repetitive card style.
+- Keep menu/rate lists scannable, with names and prices visually aligned.
+- Never replace supplied answer content with generic marketing copy.
+
+COLOR THEME DIRECTION
 {color_direction}
 
-
 BUSINESS INFORMATION
-
-Business name:
-{business.get("business_name", "")}
-
-Business type:
-{business.get("business_type", "")}
-
-About business:
-{business.get("about_business", "")}
-
-Year established:
-{business.get("year_established", "")}
-
+Business name: {business.get("business_name", "")}
+Business type: {business.get("business_type", "")}
+About business: {business.get("about_business", "")}
+Year established: {business.get("year_established", "")}
+Business phone number: {business.get("phone_number", "")}
 
 OWNER-PROVIDED WEBSITE INFORMATION
-
 {answers_text}
 
-
 REAL IMAGE ASSETS SELECTED BY THE BACKEND
-
 {image_assets_text}
 
+IMAGE COMPOSITION
+Use supplied images intentionally and selectively. Prefer facility, equipment,
+product, treatment, food, or service-detail imagery where relevant. Do not use
+one generic stock image as the entire visual identity. Never invent image URLs.
 
-Now design the complete website.
+CONTACT CONVERSION REQUIREMENTS
+The backend injects Call Now and WhatsApp controls using the saved business
+phone number. Do not invent contact details. Reserve enough space so these
+controls do not obscure the showcase.
 
-Make the design strongly specific to this business category.
-
-Use the supplied real images as intentional visual design elements.
-
-Do NOT simply put one large stock photo at the top.
-
-Think creatively about how the physical objects, products, tools,
-instruments, ingredients, materials, or equipment represented by the supplied
-images can become part of the visual identity.
-
-Choose the right image, right size, right crop, right placement, and right UI
-composition for each section.
-
-Prioritize mobile presentation first.
-
-Return ONLY the complete HTML document.
+Return ONLY a complete HTML document. Prioritize mobile first and ensure the
+facility, service, menu, product, package, and rate content remains easy to scan.
 """
 
-    html = _generate_text(
-        prompt,
-        temperature=1.0,
-        max_output_tokens=16000,
-    )
+    last_validation_error = None
+    cleaned = ""
 
-    cleaned = _clean_generated_html(html)
-
-    # If image assets were supplied, require the generated HTML to actually
-    # use at least one exact backend-provided image URL.
-    if image_assets:
-        allowed_urls = {
-            str(asset.get("image_url", "")).strip()
-            for asset in image_assets
-            if str(asset.get("image_url", "")).strip()
-        }
-
-        if allowed_urls:
-            used_image = any(
-                url in cleaned
-                for url in allowed_urls
+    for attempt in range(2):
+        generation_prompt = prompt
+        if attempt == 1:
+            generation_prompt += (
+                "\n\nRETRY: The previous HTML failed validation because: "
+                f"{last_validation_error}. Return a complete corrected document "
+                "from <!doctype html> through </html>. Keep all showcase sections, "
+                "especially Facilities / Amenities when present in the answers. "
+                "Ensure all in-page anchors exist and all CSS is self-contained."
             )
 
-            if not used_image:
+        generated_html = _generate_text(
+            generation_prompt,
+            temperature=0.9 if attempt == 0 else 0.75,
+            max_output_tokens=16000,
+        )
+        candidate = _clean_generated_html(generated_html)
+
+        try:
+            candidate = _validate_html(candidate)
+            _validate_in_page_links(candidate)
+            cleaned = candidate
+            break
+        except Exception as validation_error:
+            last_validation_error = validation_error
+            logger.warning(
+                "Showcase HTML validation failed on attempt %s: %s",
+                attempt + 1,
+                validation_error,
+            )
+            if attempt == 1:
                 raise RuntimeError(
-                    "AI generated website did not use the supplied real image assets."
-                )
+                    "AI could not produce valid showcase HTML after two attempts: "
+                    f"{validation_error}"
+                ) from validation_error
 
-    cleaned = _validate_html(cleaned)
-    _validate_in_page_links(cleaned)
+    if not cleaned:
+        raise RuntimeError("AI returned no valid showcase HTML after retry.")
 
-    # Keep owner-selected colors embedded in the final document so the
-    # generated website has a durable record of the requested brand palette.
-    # The AI remains responsible for the actual art direction and composition.
+    # Preserve deterministic contact actions from the current production flow.
+    cleaned = _inject_contact_actions(cleaned, business)
+
     selected_colors = [color for color in (color_theme_1, color_theme_2) if color]
     if selected_colors:
         missing_colors = [
-            color for color in selected_colors
-            if color.lower() not in cleaned.lower()
+            color for color in selected_colors if color.lower() not in cleaned.lower()
         ]
         if missing_colors:
             theme_metadata = (
@@ -1182,7 +1675,6 @@ Return ONLY the complete HTML document.
             )
 
     return cleaned
-
 
 
 # Backward-compatible function name.

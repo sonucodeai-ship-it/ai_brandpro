@@ -1,3 +1,4 @@
+import logging
 import secrets
 import re
 
@@ -14,6 +15,9 @@ from .website_builder import (
     generate_website_questions,
 )
 from .image_search import search_website_images
+
+
+logger = logging.getLogger(__name__)
 
 
 router = APIRouter(
@@ -46,6 +50,35 @@ def _normalize_color(value: str | None) -> str | None:
 
 
 
+
+
+def _get_optional_showcase_images(
+    business: dict,
+    answers: list[dict],
+    max_images: int = 5,
+) -> list[dict]:
+    """
+    Image search is an optional visual enhancement. A missing Unsplash key,
+    timeout, quota limit, or invalid AI image plan must not prevent the AI from
+    generating the actual business showcase.
+    """
+    try:
+        image_queries = generate_website_image_queries(business, answers)
+    except Exception:
+        logger.exception(
+            "Showcase image-query planning failed; continuing without external images."
+        )
+        return []
+
+    try:
+        return search_website_images(image_queries, max_images=max_images) or []
+    except Exception:
+        logger.exception(
+            "Showcase image search failed; continuing without external images."
+        )
+        return []
+
+
 def _get_business(
     cursor,
     user_id: int,
@@ -62,7 +95,9 @@ def _get_business(
             business_name,
             business_type,
             about_business,
-            year_established
+            year_established,
+            owner_name,
+            phone_number
         FROM business_info
         WHERE user_id = %s
         ORDER BY business_id ASC
@@ -81,6 +116,19 @@ def _get_business(
                 "Please complete Business Info first."
             ),
         )
+
+    # Load the saved staff names and roles for this exact business.
+    cursor.execute(
+        """
+        SELECT name, role
+        FROM business_staff
+        WHERE user_id = %s
+          AND business_id = %s
+        ORDER BY business_staff_id ASC
+        """,
+        (user_id, business["business_id"]),
+    )
+    business["staff_members"] = cursor.fetchall() or []
 
     return business
 
@@ -904,6 +952,19 @@ def create_website_questions(
                 ),
             )
 
+            # Save AI-written starter text as a real answer, not as a placeholder.
+            # Owners can edit it normally, and the existing answer persistence flow
+            # will retain their edits when the showcase is generated.
+            initial_answer = str(question.get("initial_answer") or "").strip()
+            if initial_answer:
+                cursor.execute(
+                    """
+                    INSERT INTO website_answer (question_id, answer_text)
+                    VALUES (%s, %s)
+                    """,
+                    (int(cursor.lastrowid), initial_answer[:10000]),
+                )
+
         cursor.execute(
             """
             UPDATE website
@@ -929,7 +990,7 @@ def create_website_questions(
             "version_number": 0,
             "public_url_id": public_url_id,
             "questions": version["questions"],
-            "answers": {},
+            "answers": version["answers"],
         }
 
     except HTTPException:
@@ -1119,17 +1180,15 @@ def generate_website(
     # ------------------------------------------------------------------
     # No database transaction is held while Gemini or Unsplash is running.
     # If the account had insufficient coins, this code is never reached.
+    generation_stage = "visual asset preparation"
     try:
-        image_queries = generate_website_image_queries(
+        image_assets = _get_optional_showcase_images(
             business,
             ai_answers,
-        )
-
-        image_assets = search_website_images(
-            image_queries,
             max_images=5,
         )
 
+        generation_stage = "AI showcase HTML generation"
         html_code = generate_website_html(
             business,
             ai_answers,
@@ -1146,10 +1205,17 @@ def generate_website(
     except HTTPException:
         raise
     except Exception as error:
-        print(f"Website AI generation error: {error}")
+        logger.exception(
+            "Website generation failed at stage '%s'.",
+            generation_stage,
+        )
         raise HTTPException(
             status_code=500,
-            detail="Website generation failed before publication.",
+            detail=(
+                f"Website generation failed during {generation_stage}. "
+                "Optional image search errors are handled automatically. "
+                "Check the backend log for the underlying AI/provider error."
+            ),
         ) from error
 
     # ------------------------------------------------------------------
@@ -1714,13 +1780,9 @@ def generate_edited_website(
         # completely untouched.
         # --------------------------------------------------------
 
-        image_queries = generate_website_image_queries(
+        image_assets = _get_optional_showcase_images(
             business,
             ai_answers,
-        )
-
-        image_assets = search_website_images(
-            image_queries,
             max_images=5,
         )
 
@@ -1920,15 +1982,15 @@ def generate_edited_website(
         if db:
             db.rollback()
 
-        print(
-            f"Website edit generation error: {error}"
+        logger.exception(
+            "Website edit generation failed; existing version remains unchanged."
         )
 
         raise HTTPException(
             status_code=500,
             detail=(
-                "Unable to update this website version. "
-                "The existing version was not changed."
+                "Unable to update this showcase. The existing version was not changed. "
+                "Check the backend log for the underlying AI/provider error."
             ),
         ) from error
 
@@ -2253,7 +2315,8 @@ def get_public_website(
                 b.business_name,
                 b.business_type,
                 b.about_business,
-                b.year_established
+                b.year_established,
+                b.phone_number
 
             FROM website_version AS v
 
@@ -2321,6 +2384,7 @@ def get_public_website(
                 "year_established": version[
                     "year_established"
                 ],
+                "phone_number": version.get("phone_number") or "",
             },
 
             "html_code": version[
